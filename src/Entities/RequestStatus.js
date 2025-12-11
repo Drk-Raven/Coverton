@@ -1,0 +1,8 @@
+export const INITIAL = 'initial'
+export const INPROGRESS = 'inprogress'
+export const OK = 'ok'
+export const ERROR = 'error'
+export const FORBIDDEN = 'forbidden'
+export const INTERMEDIATE = 'intermediate'
+export const NO_CONTENT = 'nocontent'
+export const HISTORICAL_ERROR_CODE = 'M_0003'
