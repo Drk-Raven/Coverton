@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Image } from 'react-native';
 import {
   NavigationContainer,
   getFocusedRouteNameFromRoute,
@@ -27,6 +27,7 @@ import QuotationScreen from './src/screens/modules/Quotation/QuotationScreen';
 import SignInScreen from './src/screens/modules/SignIn/SignInScreen';
 import SplashScreen from './src/screens/modules/SplashScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearToken } from './src/utils/tokenManager';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -191,8 +192,8 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
   const handleConfirmLogout = async () => {
     try {
       props.navigation.closeDrawer();
-
-      // remove saved user/session
+      clearToken();
+      await AsyncStorage.removeItem('persist:root');
       await AsyncStorage.removeItem('userDetails');
 
       // reset the root navigator to Auth
@@ -212,20 +213,19 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
     }
   };
 
+  const localImageSource = require('./src/assets/images/CovertonAppLogo.png');
+
+
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContent}>
       <View style={styles.drawerHeader}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Coverton Insurance</Text>
-          <Text style={styles.headerSubtitle}>Broking Company Ltd.</Text>
+        <Image style={styles.logo} source={localImageSource} />
         </View>
         <TouchableOpacity onPress={() => props.navigation.closeDrawer()} style={styles.closeButton}>
           <MaterialDesignIcons name="close" size={24} color={COLOR.PRIMARY_COLOR} />
         </TouchableOpacity>
       </View>
-
-      <View style={styles.separator} />
-
       {drawerItems.map(item => {
         if (item.tab === 'Logout') {
           return (
@@ -450,4 +450,8 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.FONT_MEDIUM,
     fontSize: 14,
   },
+  logo: {
+    width: '75%',
+    height: 80,
+  }
 });

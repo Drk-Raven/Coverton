@@ -13,6 +13,7 @@ import {
   Keyboard,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { COLOR, FONTS } from '../../../utils/constants';
@@ -20,7 +21,8 @@ import { OtpInput } from 'react-native-otp-entry';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthActions } from '../../../Redux/AuthRedux';
+import { setTokens } from '../../../utils/tokenManager';
 
 // <-- IMPORT YOUR API HELPERS: update the path if needed -->
 import { sendOTP, verifyOTP } from '../../../API/AuthAPI';
@@ -54,7 +56,9 @@ const SignInScreen = () => {
       setOtpValue('');
     } catch (err) {
       // err might be an object from your API (see your service's throw)
-      const errMsg = (err && (err.message || err.error || JSON.stringify(err))) || 'Failed to send OTP';
+      const errMsg =
+        (err && (err.message || err.error || JSON.stringify(err))) ||
+        'Failed to send OTP';
       Alert.alert('Send OTP failed', String(errMsg));
     } finally {
       setLoading(false);
@@ -70,14 +74,26 @@ const SignInScreen = () => {
     Keyboard.dismiss();
     setLoading(true);
     try {
-      const response = await verifyOTP({ emailId: email.trim(), otp: otpValue.trim() });
-      await AsyncStorage.setItem('userDetails', JSON.stringify(response));
+      const response = await verifyOTP({
+        emailId: email.trim(),
+        otp: otpValue.trim(),
+      });
+
+      // Store tokens in memory for immediate API access (before redux-persist writes to AsyncStorage)
+      setTokens(response.accessToken, response.refreshToken, response.tokenExpiry);
+
+      // Dispatch Redux action to store user and tokens
+      // Redux-persist will automatically save to AsyncStorage
+      dispatch(AuthActions.storeAuthUser(response, response.accessToken, response.refreshToken, response.tokenExpiry));
+
       Alert.alert('Signed in', 'Verification successful.');
 
       // navigate into app — adjust route name if needed
       if (navigation && navigation.replace) navigation.replace('App');
     } catch (err) {
-      const errMsg = (err && (err.message || err.error || JSON.stringify(err))) || 'OTP verification failed';
+      const errMsg =
+        (err && (err.message || err.error || JSON.stringify(err))) ||
+        'OTP verification failed';
       Alert.alert('Verify OTP failed', String(errMsg));
     } finally {
       setLoading(false);
@@ -93,7 +109,8 @@ const SignInScreen = () => {
   };
 
   const buttonLabel = isOtpStep ? 'Verify & Sign In' : 'Send OTP';
-  const disabled = loading || (!email.trim()) || (isOtpStep && !otpValue.trim());
+  const disabled = loading || !email.trim() || (isOtpStep && !otpValue.trim());
+  const localImageSource = require('../../../assets/images/CovertonAppLogo.png');
 
   return (
     <SafeAreaView style={styles.root}>
@@ -111,18 +128,32 @@ const SignInScreen = () => {
           <View style={styles.container}>
             <View style={styles.header}>
               <View style={styles.iconContainer}>
-                <MaterialDesignIcons name="star-four-points" size={28} color="#fff" />
+                <Image style={styles.logo} source={localImageSource} />
               </View>
-              <Text style={styles.title}>{isOtpStep ? 'Enter OTP' : 'Welcome Back'}</Text>
+              <Text style={styles.title}>
+                {isOtpStep ? 'Enter OTP' : 'Welcome'}
+              </Text>
               <Text style={styles.subtitle}>
-                {isOtpStep ? 'We’ve sent a 6-digit code to your email' : 'Sign in to continue your journey'}
+                {isOtpStep
+                  ? 'We’ve sent a 6-digit code to your email'
+                  : 'Sign in to continue your journey'}
               </Text>
             </View>
 
             <View style={styles.form}>
               <Text style={styles.label}>Email</Text>
-              <View style={[styles.inputContainer, emailFocused && styles.inputContainerFocused, isOtpStep && styles.inputContainerDisabled]}>
-                <MaterialDesignIcons name="email-outline" size={20} color={emailFocused ? COLOR.PRIMARY_COLOR : '#999'} />
+              <View
+                style={[
+                  styles.inputContainer,
+                  emailFocused && styles.inputContainerFocused,
+                  isOtpStep && styles.inputContainerDisabled,
+                ]}
+              >
+                <MaterialDesignIcons
+                  name="email-outline"
+                  size={20}
+                  color={emailFocused ? COLOR.PRIMARY_COLOR : '#999'}
+                />
                 <TextInput
                   placeholder="your.email@example.com"
                   placeholderTextColor="#999"
@@ -136,7 +167,9 @@ const SignInScreen = () => {
                   editable={!isOtpStep && !loading}
                 />
               </View>
-              <Text style={styles.helperText}>We’ll send a one-time password to this email.</Text>
+              <Text style={styles.helperText}>
+                We’ll send a one-time password to this email.
+              </Text>
 
               {isOtpStep && (
                 <View style={styles.otpBlock}>
@@ -156,13 +189,20 @@ const SignInScreen = () => {
                       setOtpValue(text);
                     }}
                     textInputProps={{ accessibilityLabel: 'One-Time Password' }}
-                    textProps={{ accessibilityRole: 'text', accessibilityLabel: 'OTP digit', allowFontScaling: false }}
+                    textProps={{
+                      accessibilityRole: 'text',
+                      accessibilityLabel: 'OTP digit',
+                      allowFontScaling: false,
+                    }}
                     theme={{
                       containerStyle: styles.otpContainer,
                       pinCodeContainerStyle: styles.pinCodeContainer,
-                      focusedPinCodeContainerStyle: styles.activePinCodeContainer,
-                      filledPinCodeContainerStyle: styles.filledPinCodeContainer,
-                      disabledPinCodeContainerStyle: styles.disabledPinCodeContainer,
+                      focusedPinCodeContainerStyle:
+                        styles.activePinCodeContainer,
+                      filledPinCodeContainerStyle:
+                        styles.filledPinCodeContainer,
+                      disabledPinCodeContainerStyle:
+                        styles.disabledPinCodeContainer,
                       pinCodeTextStyle: styles.pinCodeText,
                       placeholderTextStyle: styles.placeholderText,
                       focusStickStyle: styles.focusStick,
@@ -186,12 +226,19 @@ const SignInScreen = () => {
                         // resend OTP: call sendOTP again
                         setLoading(true);
                         try {
-                          const response = await sendOTP({ emailId: email.trim() });
+                          const response = await sendOTP({
+                            emailId: email.trim(),
+                          });
                           const message = response?.message || 'OTP resent';
                           Alert.alert('OTP Resent', message);
                           setOtpValue('');
                         } catch (err) {
-                          const errMsg = (err && (err.message || err.error || JSON.stringify(err))) || 'Failed to resend OTP';
+                          const errMsg =
+                            (err &&
+                              (err.message ||
+                                err.error ||
+                                JSON.stringify(err))) ||
+                            'Failed to resend OTP';
                           Alert.alert('Resend failed', String(errMsg));
                         } finally {
                           setLoading(false);
@@ -205,7 +252,10 @@ const SignInScreen = () => {
               )}
 
               <TouchableOpacity
-                style={[styles.signInButton, disabled && styles.signInButtonDisabled]}
+                style={[
+                  styles.signInButton,
+                  disabled && styles.signInButtonDisabled,
+                ]}
                 onPress={handlePrimaryAction}
                 activeOpacity={0.9}
                 disabled={disabled}
@@ -215,13 +265,19 @@ const SignInScreen = () => {
                 ) : (
                   <>
                     <Text style={styles.signInText}>{buttonLabel}</Text>
-                    <MaterialDesignIcons name="arrow-right" size={18} color="#fff" />
+                    <MaterialDesignIcons
+                      name="arrow-right"
+                      size={18}
+                      color="#fff"
+                    />
                   </>
                 )}
               </TouchableOpacity>
 
               <View style={styles.registerContainer}>
-                <Text style={styles.registerText}>Please use the email provided.</Text>
+                <Text style={styles.registerText}>
+                  Please use the email provided.
+                </Text>
               </View>
             </View>
           </View>
@@ -254,10 +310,8 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
+    width: '100%',
     borderRadius: 12,
-    backgroundColor: COLOR.PRIMARY_COLOR,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -397,4 +451,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: FONTS.FONT_REGULAR,
   },
+  logo: {
+    width: '70%',
+    height: 80,
+  }
 });

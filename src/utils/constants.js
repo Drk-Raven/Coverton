@@ -1,6 +1,6 @@
 export const COLOR = {
-    // PRIMARY_COLOR: '#1565C0',
-    PRIMARY_COLOR: 'black',
+    PRIMARY_COLOR: '#000000',
+    // PRIMARY_COLOR: 'black',
     SECONDARY_COLOR: '#F2C94C',
     LIGHT_BACKGROUND: '#EFF2F5',
     WHITE_COLOR: '#FFFFFF',

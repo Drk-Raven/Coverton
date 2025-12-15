@@ -1,14 +1,5 @@
-import axios from 'axios';
+import api from './apiClient';
 import * as Endpoints from '../Entities/Endpoint';
-
-const api = axios.create({
-  baseURL: Endpoints.BASE_ENDPOINT,
-  headers: {
-    'Accept-Language': 'en-US',
-    'Content-Type': 'application/json',
-    'Accept': 'application/json', // optional but good
-  },
-});
 
 export const getCustomersName = async () => {
   try {
@@ -21,7 +12,6 @@ export const getCustomersName = async () => {
 };
 
 export const getCustomerFields = async ({ categoryId }) => {
-  console.log({APICATEGORYID: categoryId})
   try {
     const response = await api.get(Endpoints.GET_CUSTOMER_FIELDS, {
       params: { id: categoryId },
@@ -45,7 +35,6 @@ export const getCustomers = async () => {
 };
 
 export const getCustomerById = async ({ insurerId }) => {
-  console.log({APICATEGORYID: insurerId})
   try {
     const response = await api.get(Endpoints.GET_CUSTOMER_BY_ID, {
       params: { id: insurerId },
@@ -79,7 +68,7 @@ export const getCustomerFirstLevel = async () => {
   }
 };
 
-export const getCustomerSecondLevel = async ({customerId}) => {
+export const getCustomerSecondLevel = async ({ customerId }) => {
   try {
     const response = await api.get(Endpoints.GET_CUSTOMER_SECOND_LEVEL, {
       params: { id: customerId },
@@ -93,7 +82,6 @@ export const getCustomerSecondLevel = async ({customerId}) => {
 };
 
 export const getInsuredCustomer = async ({ customerId, selfId }) => {
-  console.log({APICATEGORYID: customerId, selfId})
   try {
     const response = await api.get(Endpoints.GET_INSURED_CUSTOMER, {
       params: { customerid: customerId, selfid: selfId },

@@ -1,8 +1,7 @@
 export const BASE = 'api/'
 // export const BASE_ENDPOINT = 'https://cibs.coverton.in/'
-export const BASE_ENDPOINT = 'https://cibs-dev.coverton.in'
-// export const BASE_ENDPOINT = 'http://10.0.2.2:5030/'
-
+// export const BASE_ENDPOINT = 'https://cibs-dev.coverton.in'
+export const BASE_ENDPOINT = 'http://10.0.2.2:5030/'
 
 // Business Opportunities Endpoints
 export const GET_PRODUCT = BASE + 'BOI/Products'
@@ -25,6 +24,7 @@ export const CREATE_IGT = BASE + 'IGT'
 // Authentication Endpoints
 export const SEND_OTP = BASE + 'Login/Send-OTP'
 export const VERIFY_OTP = BASE + 'Login/Verify-OTP'
+export const REFRESH_TOKEN = BASE + 'Login/Refresh-Token'
 
 // Quotation Endpoints
 export const CREATE_QUOTATION = BASE + 'Quotation'
