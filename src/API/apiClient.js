@@ -38,9 +38,13 @@ const processQueue = (error, token = null) => {
 const refreshTokenFlow = async () => {
     // Sync state from Redux store first
     const state = store.getState();
-    const storedRefreshToken = state.auth.refreshToken || getRefreshToken();
+    const inMemoryRefreshToken = getRefreshToken();
+    const reduxRefreshToken = state.auth?.refreshToken;
+
+    const storedRefreshToken = reduxRefreshToken || inMemoryRefreshToken;
 
     if (!storedRefreshToken) {
+        console.log('ERROR: No refresh token found in Redux or in-memory!');
         throw new Error('No refresh token available');
     }
 
@@ -112,9 +116,18 @@ apiClient.interceptors.request.use(
                             token = newToken;
                         } catch (err) {
                             console.log('Proactive refresh failed:', err.response?.data || err.message);
-                            // If refresh fails here, ensure we clear auth and let the request fail
-                            await clearTokenAndPersistClear();
-                            throw err;
+
+                            // ONLY clear auth on actual authentication failures (401/403)
+                            // Network errors should NOT clear auth - the token might still be valid
+                            const status = err.response?.status;
+                            if (status === 401 || status === 403) {
+                                console.log('Auth error - clearing credentials');
+                                await clearTokenAndPersistClear();
+                            } else {
+                                console.log('Network/other error - keeping existing credentials');
+                            }
+                            // Don't throw here - let the request proceed with existing token
+                            // Response interceptor will handle 401 if needed
                         } finally {
                             isRefreshing = false;
                         }
@@ -181,8 +194,19 @@ apiClient.interceptors.response.use(
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 return apiClient(originalRequest);
             } catch (refreshErr) {
-                // failed to refresh -> clear auth and reject queued requests
-                await clearTokenAndPersistClear();
+                // Only clear auth on actual authentication failures (401/403)
+                const status = refreshErr.response?.status;
+                const errorMsg = refreshErr.message || '';
+
+                if (status === 401 || status === 403 || errorMsg.includes('Invalid or expired refresh token')) {
+                    console.log('Refresh returned auth error - clearing credentials');
+                    if (errorMsg.includes('Invalid or expired refresh token')) {
+                        store.dispatch(AuthActions.setSessionExpired(true));
+                    }
+                    await clearTokenAndPersistClear();
+                } else {
+                    console.log('Refresh failed with network/other error - keeping credentials');
+                }
                 processQueue(refreshErr, null);
                 return Promise.reject(refreshErr);
             } finally {

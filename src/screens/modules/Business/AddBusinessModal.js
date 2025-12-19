@@ -28,7 +28,7 @@ import { getCategoriesByProduct } from '../../../utils/utils';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const INITIAL_LEAD_DATA = {
-  consultant: 'Ramesh',
+  consultant: '',
   customer: '',
   customerType: '',
   product: '',
@@ -78,6 +78,16 @@ const AddBusinessModal = props => {
   const customers = useSelector(
     state => state?.customer?.customersName ?? [],
   );
+  const user = useSelector(state => state.auth?.user ?? null);
+
+  useEffect(() => {
+    if (modalVisible && user?.userName && !leadData.consultant) {
+      setLeadData(prev => ({
+        ...prev,
+        consultant: user.userName,
+      }));
+    }
+  }, [modalVisible, user]);
 
   useEffect(() => {
     if (modalVisible) {
@@ -112,7 +122,10 @@ const AddBusinessModal = props => {
 
         setLeadData(processedFormData);
       } else {
-        setLeadData(INITIAL_LEAD_DATA);
+        setLeadData({
+          ...INITIAL_LEAD_DATA,
+          consultant: user?.userName || '',
+        });
       }
     }
   }, [modalVisible, isEditMode, formData]);
@@ -136,8 +149,13 @@ const AddBusinessModal = props => {
   useEffect(() => {
     dispatch(BusinessOpportunitiesActions.getProducts());
     dispatch(BusinessOpportunitiesActions.getCategories());
-    dispatch(CustomerActions.getCustomersName());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (modalVisible) {
+      dispatch(CustomerActions.getCustomersName());
+    }
+  }, [modalVisible, dispatch]);
 
   useEffect(() => {
     let data = productsState?.map(product => {
@@ -595,7 +613,7 @@ const AddBusinessModal = props => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveButton}
-                onPress={handleSaveWrapper}
+                onPress={()=>{handleSaveWrapper()}}
                 activeOpacity={0.8}
               >
                 <MaterialDesignIcons

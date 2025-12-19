@@ -20,6 +20,8 @@ export const sendOTP = async ({ emailId }) => {
       { params: { email: emailId } }
     );
 
+    console.log({apiRe: response})
+
     return response.data;
   } catch (error) {
     console.error('sendOTP API Error:', error?.response?.data || error);

@@ -11,6 +11,7 @@ export const INITIAL_STATE = Immutable({
   token: null,
   refreshToken: null,
   tokenExpiry: null,
+  isSessionExpired: false,
 });
 
 const { Types, Creators } = createActions({
@@ -21,6 +22,7 @@ const { Types, Creators } = createActions({
   storeAuthUser: ['user', 'token', 'refreshToken', 'tokenExpiry'],
   updateTokens: ['token', 'refreshToken', 'tokenExpiry'],
   signOut: [],
+  setSessionExpired: ['isExpired'],
 });
 
 export const AuthTypes = Types;
@@ -51,6 +53,7 @@ export const storeAuthUser = (state, { user, token, refreshToken, tokenExpiry })
     refreshToken: refreshToken ?? null,
     tokenExpiry: tokenExpiry ?? null,
     isAuthenticated: true,
+    isSessionExpired: false,
     signInRequestStatus: RequestStatus.SUCCESS,
     restoreAuthRequestStatus: RequestStatus.SUCCESS,
   });
@@ -71,6 +74,9 @@ export const signOut = (state = INITIAL_STATE, action = {}) =>
     signInRequestStatus: RequestStatus.INITIAL,
   });
 
+export const setSessionExpired = (state, { isExpired }) =>
+  state.merge({ isSessionExpired: isExpired });
+
 export const reducer = createReducer(INITIAL_STATE, {
   [Types.RESTORE_AUTH]: restoreAuth,
   [Types.SET_RESTORE_AUTH_REQUEST_STATUS]: setRestoreAuthRequestStatus,
@@ -79,4 +85,5 @@ export const reducer = createReducer(INITIAL_STATE, {
   [Types.STORE_AUTH_USER]: storeAuthUser,
   [Types.UPDATE_TOKENS]: updateTokens,
   [Types.SIGN_OUT]: signOut,
+  [Types.SET_SESSION_EXPIRED]: setSessionExpired,
 });

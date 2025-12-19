@@ -23,7 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { AuthActions } from '../../../Redux/AuthRedux';
 import { setTokens } from '../../../utils/tokenManager';
-
+import MessageModal from '../../components/MessageModal';
 // <-- IMPORT YOUR API HELPERS: update the path if needed -->
 import { sendOTP, verifyOTP } from '../../../API/AuthAPI';
 
@@ -38,28 +38,51 @@ const SignInScreen = () => {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showModal = (title, message, type = 'info') => {
+    setModalConfig({ title, message, type });
+    setModalVisible(true);
+  };
 
   // Request OTP from server
   const handleSendOtp = async () => {
-    if (!email.trim()) {
-      Alert.alert('Enter email', 'Please enter email before requesting OTP.');
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      Alert.alert('Enter email', 'Please enter an email before requesting OTP.');
       return;
     }
+  
     Keyboard.dismiss();
     setLoading(true);
+  
     try {
-      const response = await sendOTP({ emailId: email.trim() });
-      // response shape depends on your API; show helpful feedback if available
-      const message = response?.message || 'OTP sent to your email';
-      Alert.alert('OTP Sent', message);
+      const response = await sendOTP({ emailId: trimmedEmail });
+  
+      const message = response?.message ?? 'OTP sent to your email';
+      const isUserNotExist =
+        response === 'User does not exist' || response?.error === 'User does not exist';
+  
+      if (isUserNotExist) {
+        showModal('Failed to send OTP', 'User does not exist', 'error');
+        return;
+      }
+  
+      showModal('OTP Sent', message, 'success');
       setIsOtpStep(true);
       setOtpValue('');
-    } catch (err) {
-      // err might be an object from your API (see your service's throw)
-      const errMsg =
-        (err && (err.message || err.error || JSON.stringify(err))) ||
-        'Failed to send OTP';
-      Alert.alert('Send OTP failed', String(errMsg));
+    } catch (error) {
+      const errorMessage =
+        error?.message ||
+        error?.error ||
+        'Failed to send OTP. Please try again.';
+  
+      showModal('Send OTP Failed', errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -79,14 +102,35 @@ const SignInScreen = () => {
         otp: otpValue.trim(),
       });
 
+      // Check if login was successful
+      if (response.loginStatus !== 'Valid') {
+        showModal(
+          'Verification Failed',
+          response.loginMessage || 'Invalid OTP. Please try again.',
+          'error'
+        );
+        return;
+      }
+
       // Store tokens in memory for immediate API access (before redux-persist writes to AsyncStorage)
-      setTokens(response.accessToken, response.refreshToken, response.tokenExpiry);
+      setTokens(
+        response.accessToken,
+        response.refreshToken,
+        response.tokenExpiry,
+      );
 
       // Dispatch Redux action to store user and tokens
       // Redux-persist will automatically save to AsyncStorage
-      dispatch(AuthActions.storeAuthUser(response, response.accessToken, response.refreshToken, response.tokenExpiry));
+      dispatch(
+        AuthActions.storeAuthUser(
+          response,
+          response.accessToken,
+          response.refreshToken,
+          response.tokenExpiry,
+        ),
+      );
 
-      Alert.alert('Signed in', 'Verification successful.');
+      showModal('Signed In', 'Verification successful.', 'success');
 
       // navigate into app — adjust route name if needed
       if (navigation && navigation.replace) navigation.replace('App');
@@ -94,7 +138,7 @@ const SignInScreen = () => {
       const errMsg =
         (err && (err.message || err.error || JSON.stringify(err))) ||
         'OTP verification failed';
-      Alert.alert('Verify OTP failed', String(errMsg));
+      showModal('Verify OTP failed', String(errMsg), 'error');
     } finally {
       setLoading(false);
     }
@@ -229,8 +273,11 @@ const SignInScreen = () => {
                           const response = await sendOTP({
                             emailId: email.trim(),
                           });
-                          const message = response?.message || 'OTP resent';
-                          Alert.alert('OTP Resent', message);
+                          showModal(
+                            'OTP Resent',
+                            response?.message || 'OTP resent successfully',
+                            'success'
+                          );
                           setOtpValue('');
                         } catch (err) {
                           const errMsg =
@@ -239,7 +286,12 @@ const SignInScreen = () => {
                                 err.error ||
                                 JSON.stringify(err))) ||
                             'Failed to resend OTP';
-                          Alert.alert('Resend failed', String(errMsg));
+                          // Alert.alert('Resend failed', String(errMsg));
+                          showModal(
+                            'Resend OTP Failed',
+                            String(errMsg),
+                            'error'
+                          );
                         } finally {
                           setLoading(false);
                         }
@@ -282,6 +334,13 @@ const SignInScreen = () => {
             </View>
           </View>
         </ScrollView>
+        <MessageModal
+          visible={modalVisible}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          type={modalConfig.type}
+          onClose={() => setModalVisible(false)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -454,5 +513,5 @@ const styles = StyleSheet.create({
   logo: {
     width: '70%',
     height: 80,
-  }
+  },
 });
