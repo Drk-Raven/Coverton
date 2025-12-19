@@ -1,13 +1,5 @@
-import axios from 'axios';
+import api from './apiClient';
 import * as Endpoints from '../Entities/Endpoint';
-
-const api = axios.create({
-  baseURL: Endpoints.BASE_ENDPOINT, // http://10.0.2.2:5030/
-  headers: {
-    'Accept-Language': 'en-US',
-    'Content-Type': 'application/json',
-  },
-});
 
 export const getProducts = async () => {
   try {

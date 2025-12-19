@@ -157,7 +157,7 @@ const CustomerConversionModal = props => {
         setLeadData(prev => ({ ...prev, insuredName: '' }));
       } else {
         setUseExistingInsurer(false);
-        setLeadData(prev => ({ ...prev, insuredName: '' }));
+        setLeadData(prev => ({ ...prev, insuredName: convertCustomerData?.insuredName || '' }) );
       }
       setIsSelf(true);
     }
@@ -341,6 +341,7 @@ const CustomerConversionModal = props => {
                     <DynamicDropdown
                       placeholder=" Select an Insurer"
                       dropdownData={updatedInsurer}
+                      disabled
                       labelField="name"
                       valueField="insuredId"
                       selectedOption={leadData.insuredName}
@@ -364,6 +365,7 @@ const CustomerConversionModal = props => {
                         onChangeText={text =>
                           setLeadData(prev => ({ ...prev, insuredName: text }))
                         }
+                        editable={leadData.selfId !== 1}
                         placeholder="Enter insured name"
                         placeholderTextColor="#9CA3AF"
                       />

@@ -3,27 +3,23 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSelector } from 'react-redux';
 
 const SplashScreen = () => {
   const navigation = useNavigation();
+  // New changes from here
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
   useEffect(() => {
-    const checkLogin = async () => {
-      try {
-        const userDetails = await AsyncStorage?.getItem('userDetails');  
-        setTimeout(() => {
-          navigation.replace(userDetails ? 'App' : 'Auth');
-        }, 4000);
-  
-      } catch (err) {
-        navigation.replace('Auth');
-      }
-    };
-  
-    checkLogin();
-  }, []);
-  
+    // Wait for splash animation and then navigate based on auth state
+    const timer = setTimeout(() => {
+      navigation.replace(isAuthenticated ? 'App' : 'Auth');
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, navigation]);
+
+  // New changes to here
   return (
     <View style={styles.container}>
       <LottieView
@@ -50,3 +46,4 @@ const styles = StyleSheet.create({
     height: 250,
   },
 });
+

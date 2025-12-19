@@ -17,8 +17,10 @@ export const sendOTP = async ({ emailId }) => {
     const response = await api.post(
       Endpoints.SEND_OTP,
       {},
-      { params: { email: emailId } } // query param => ?email=...
+      { params: { email: emailId } }
     );
+
+    console.log({apiRe: response})
 
     return response.data;
   } catch (error) {
@@ -33,11 +35,11 @@ export const verifyOTP = async ({ emailId, otp }) => {
   try {
     const response = await api.post(
       Endpoints.VERIFY_OTP,
-      {}, // empty body
+      {},
       {
         params: {
           email: emailId,
-          otp: otp, // goes in query string
+          otp: otp,
         },
       }
     );

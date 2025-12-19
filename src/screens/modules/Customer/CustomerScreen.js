@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useFocusEffect } from '@react-navigation/native';
 import { SwipeListView } from 'react-native-swipe-list-view';
@@ -24,6 +24,9 @@ const CustomerScreen = props => {
   useFocusEffect(
     useCallback(() => {
       dispatch(CustomerActions.getCustomerFirstLevel());
+      return () => {
+        setSearchText('');
+      };
     }, [dispatch]),
   );
 
@@ -105,6 +108,7 @@ const CustomerScreen = props => {
       <TouchableOpacity
         style={styles.convertButton}
         onPress={() => navigation.replace('PolicyDetails', { leadData: item })}
+        // onPress={() => navigation.getParent()?.navigate('PolicyDetails', { leadData: item })}
         activeOpacity={0.8}
       >
         <View style={styles.iconContainer}>
@@ -202,6 +206,7 @@ const CustomerScreen = props => {
               ]}
             >
               <CustomerCard data={item} leadData={item} onPress={()=>{navigation.navigate('PolicyDetails', { leadData: item })}} />
+              {/* <CustomerCard data={item} leadData={item} onPress={() => { navigation.getParent()?.navigate('PolicyDetails', { leadData: item }) }} /> */}
             </View>
           )}
           contentContainerStyle={{ paddingBottom: 100 }}

@@ -8,7 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import { useDispatch, useSelector } from 'react-redux';
@@ -35,7 +35,7 @@ const BusinessScreen = props => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState(null); // 'Hot', 'Warm', 'Cold', 'Dropped', or null
   const [formData, setFormData] = useState({
-    consultant: 'Ramesh',
+    consultant: user?.userName || '',
     customerType: '',
     customer: '',
     product: '',
@@ -77,6 +77,7 @@ const BusinessScreen = props => {
   const categories = useSelector(
     state => state.businessOpportunities?.categories ?? [],
   );
+  const user = useSelector(state => state.auth?.user ?? null);
 
   const isLoading = leadsDataRequestStatus === RequestStatus.INPROGRESS
 
@@ -100,17 +101,35 @@ const BusinessScreen = props => {
       (lead?.product || '').toLowerCase().includes(searchLower) ||
       (lead?.category || '').toLowerCase().includes(searchLower) ||
       `${lead?.premiumExpected || ''}`.toLowerCase().includes(searchLower) ||
-      `${lead?.saidv || ''}`.toLowerCase().includes(searchLower)
+      `${lead?.saidv || ''}`.toLowerCase().includes(searchLower) ||
+      `${lead?.phoneno || ''}`.toLowerCase().includes(searchLower)
     );
   });
+
+  const tiek = useSelector((state) => state.auth);
+
+  console.log({tiek})
 
   useFocusEffect(
     useCallback(() => {
       dispatch(BusinessOpportunitiesActions.getLeads());
       dispatch(BusinessOpportunitiesActions.getProducts());
       dispatch(BusinessOpportunitiesActions.getCategories());
+
+      return () => {
+        setSearchText('');
+      };
     }, [dispatch]),
   );
+
+  useEffect(() => {
+    if (user?.userName) {
+      setFormData(prev => ({
+        ...prev,
+        consultant: user.userName,
+      }));
+    }
+  }, [user]);
 
   const openModal = () => {
     setModalVisible(true);
@@ -195,7 +214,7 @@ const BusinessScreen = props => {
   const handleAddNew = () => {
     setIsEditMode(false);
     setFormData({
-      consultant: '',
+      consultant: user?.userName || '',
       customerType: '',
       customer: '',
       product: '',
@@ -211,7 +230,7 @@ const BusinessScreen = props => {
   const handleEditLead = leadData => {
     setIsEditMode(true);
     setFormData({
-      consultant: leadData?.consultant || '',
+      consultant: user?.userName || '',
       customerType: leadData?.customerType || '',
       customer: leadData?.customer || '',
       product: leadData?.product || '',
@@ -696,7 +715,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   listContent: {
-    paddingBottom: 40,
+    paddingBottom: 140,
   },
   cardWrapper: {
     marginHorizontal: 16,

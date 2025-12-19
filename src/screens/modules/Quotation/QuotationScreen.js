@@ -40,6 +40,10 @@ const QuotationScreen = () => {
   useFocusEffect(
     useCallback(() => {
       dispatch(QuotationActions.getQuotations());
+
+      return () => {
+        setSearchText('');
+      }
     }, [dispatch]),
   );
 

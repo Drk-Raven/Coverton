@@ -4,6 +4,7 @@ import { BusinessOpportunitiesTypes as BOTypes } from '../Redux/BusinessOpportun
 import { CustomerTypes } from '../Redux/CustomerRedux';
 import { QuotationTypes } from '../Redux/QuotationRedux';
 import { PolicyTypes } from '../Redux/PolicyRedux';
+import { AuthTypes } from '../Redux/AuthRedux';
 
 import {
   getProducts,
@@ -31,6 +32,11 @@ import {
 import {
   getPolicy
 } from './PolicySaga'
+import {
+  signIn,
+  signOut,
+  restoreAuth,
+} from './AuthSaga';
 
 export default function* root() {
   yield all([
@@ -55,6 +61,10 @@ export default function* root() {
     takeLatest(QuotationTypes.GET_QUOTATION_BY_ID, getQuotationById),
 
     takeLatest(PolicyTypes.GET_POLICY, getPolicy),
+
+    yield takeLatest(AuthTypes.SIGN_IN, signIn),
+    yield takeLatest(AuthTypes.SIGN_OUT, signOut),
+    yield takeLatest(AuthTypes.RESTORE_AUTH, restoreAuth),
 
   ]);
 }

@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Image } from 'react-native';
 import {
   NavigationContainer,
   getFocusedRouteNameFromRoute,
+  useNavigationState,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -17,6 +18,7 @@ import {
 } from 'react-native-safe-area-context';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { useSelector, useDispatch } from 'react-redux';
 
 import { COLOR, FONTS } from './src/utils/constants';
 import DashboardScreen from './src/screens/modules/Dashboard/DashboardScreen';
@@ -27,6 +29,25 @@ import QuotationScreen from './src/screens/modules/Quotation/QuotationScreen';
 import SignInScreen from './src/screens/modules/SignIn/SignInScreen';
 import SplashScreen from './src/screens/modules/SplashScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearToken } from './src/utils/tokenManager';
+import { AuthActions } from './src/Redux/AuthRedux';
+import MessageModal from './src/screens/components/MessageModal';
+import { createNavigationContainerRef } from '@react-navigation/native';
+
+const navigationRef = createNavigationContainerRef();
+
+// ---------- Header Context for dynamic title ----------
+type HeaderContextType = {
+  headerTitle: string;
+  setHeaderTitle: (title: string) => void;
+};
+
+const HeaderContext = React.createContext<HeaderContextType>({
+  headerTitle: 'Dashboard',
+  setHeaderTitle: () => { },
+});
+
+const useHeader = () => React.useContext(HeaderContext);
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -46,12 +67,28 @@ const BusinessStack = () => (
   </Stack.Navigator>
 );
 
-const CustomerStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="CustomerMain" component={CustomerScreen} />
-    <Stack.Screen name="PolicyDetails" component={PolicyDetailsScreen} options={{ headerShown: false }} />
-  </Stack.Navigator>
-);
+const CustomerStack = () => {
+  const { setHeaderTitle } = useHeader();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{ headerShown: false }}
+      screenListeners={{
+        focus: (e) => {
+          // Update header based on which screen is focused
+          if (e.target?.startsWith('PolicyDetails')) {
+            setHeaderTitle('Policy Details');
+          } else if (e.target?.startsWith('CustomerMain')) {
+            setHeaderTitle('Customer');
+          }
+        },
+      }}
+    >
+      <Stack.Screen name="CustomerMain" component={CustomerScreen} />
+      <Stack.Screen name="PolicyDetails" component={PolicyDetailsScreen} />
+    </Stack.Navigator>
+  );
+};
 
 const QuotationStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -59,9 +96,18 @@ const QuotationStack = () => (
   </Stack.Navigator>
 );
 
+// ---------- Tab title mapping ----------
+const TAB_TITLES: Record<string, string> = {
+  DashboardTab: 'Dashboard',
+  BusinessTab: 'Business',
+  CustomerTab: 'Customer',
+  QuotationTab: 'Quotation',
+};
+
 // ---------- Bottom tabs ----------
 const BottomTabs = () => {
   const insets = useSafeAreaInsets();
+  const { setHeaderTitle } = useHeader();
 
   return (
     <Tab.Navigator
@@ -81,6 +127,15 @@ const BottomTabs = () => {
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
+        },
+      }}
+      screenListeners={{
+        focus: (e) => {
+          // Update header title when tab gets focus
+          const tabName = e.target?.split('-')[0];
+          if (tabName && TAB_TITLES[tabName]) {
+            setHeaderTitle(TAB_TITLES[tabName]);
+          }
         },
       }}
     >
@@ -120,10 +175,10 @@ const BottomTabs = () => {
           tabPress: async e => {
             // Try to emulate "go to root" behavior for nested Customer stack
             const state = navigation.getState();
-            const tabRoute = state.routes.find(r => r.name === 'CustomerTab');
+            const tabRoute = state.routes.find((r: any) => r.name === 'CustomerTab');
             const nestedState = tabRoute?.state;
 
-            if (nestedState && nestedState.index > 0) {
+            if (nestedState && (nestedState.index ?? 0) > 0) {
               e.preventDefault();
               navigation.navigate('CustomerTab', { screen: 'CustomerMain' });
             }
@@ -142,6 +197,15 @@ const BottomTabs = () => {
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+// ---------- Main Stack (wraps BottomTabs) ----------
+const MainStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={BottomTabs} />
+    </Stack.Navigator>
   );
 };
 
@@ -171,13 +235,14 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
     props.navigation.closeDrawer();
     const rootScreen = TAB_ROOT_SCREENS[tabName];
 
-    if (rootScreen) {
-      // navigate to MainTabs -> tabName -> rootScreen
-      props.navigation.navigate('MainTabs', {
-        screen: tabName,
-        params: { screen: rootScreen },
-      });
-    }
+    console.log({ rootScreen })
+
+    // Navigate to MainTabs -> Tabs -> specific tab
+    // The MainStack structure prevents duplicate screens
+    props.navigation.navigate('MainTabs', {
+      screen: 'Tabs',
+      params: { screen: tabName },
+    });
   };
 
   const handleLogoutPress = () => {
@@ -191,8 +256,8 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
   const handleConfirmLogout = async () => {
     try {
       props.navigation.closeDrawer();
-
-      // remove saved user/session
+      clearToken();
+      await AsyncStorage.removeItem('persist:root');
       await AsyncStorage.removeItem('userDetails');
 
       // reset the root navigator to Auth
@@ -212,20 +277,19 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
     }
   };
 
+  const localImageSource = require('./src/assets/images/CovertonAppLogo.png');
+
+
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContent}>
       <View style={styles.drawerHeader}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Coverton Insurance</Text>
-          <Text style={styles.headerSubtitle}>Broking Company Ltd.</Text>
+          <Image style={styles.logo} source={localImageSource} />
         </View>
         <TouchableOpacity onPress={() => props.navigation.closeDrawer()} style={styles.closeButton}>
           <MaterialDesignIcons name="close" size={24} color={COLOR.PRIMARY_COLOR} />
         </TouchableOpacity>
       </View>
-
-      <View style={styles.separator} />
-
       {drawerItems.map(item => {
         if (item.tab === 'Logout') {
           return (
@@ -284,52 +348,48 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
 
 // ---------- Drawer navigator ----------
 const AppDrawer = () => {
+  const [headerTitle, setHeaderTitle] = React.useState('Dashboard');
+
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
-        headerShown: true,
-        headerStyle: { backgroundColor: COLOR.PRIMARY_COLOR },
-        headerTintColor: COLOR.WHITE_COLOR,
-        headerTitleStyle: { fontWeight: 'bold' },
-        overlayColor: COLOR.BLACK_COLOR + '88',
-      }}
-    >
-      <Drawer.Screen
-        name="MainTabs"
-        component={BottomTabs}
-        options={({ route }) => ({
-          title: getHeaderTitle(route),
-        })}
-      />
-    </Drawer.Navigator>
+    <HeaderContext.Provider value={{ headerTitle, setHeaderTitle }}>
+      <Drawer.Navigator
+        drawerContent={(props) => <CustomDrawerContent {...props} />}
+        screenOptions={{
+          headerShown: true,
+          headerStyle: { backgroundColor: COLOR.PRIMARY_COLOR },
+          headerTintColor: COLOR.WHITE_COLOR,
+          headerTitleStyle: { fontWeight: 'bold' },
+          overlayColor: COLOR.BLACK_COLOR + '88',
+        }}
+      >
+        <Drawer.Screen
+          name="MainTabs"
+          component={MainStack}
+          options={{ title: headerTitle }}
+        />
+      </Drawer.Navigator>
+    </HeaderContext.Provider>
   );
 };
 
 // ---------- helpers ----------
-const getHeaderTitle = (route) => {
-  const routeName = getFocusedRouteNameFromRoute(route) ?? 'DashboardTab';
-  switch (routeName) {
-    case 'DashboardTab':
-      return 'Dashboard';
-    case 'BusinessTab':
-      return 'Business';
-    case 'CustomerTab':
-      return 'Customer';
-    case 'QuotationTab':
-      return 'Quotation';
-    default:
-      return 'Dashboard';
-  }
-};
 
-const getActiveTab = (state) => {
+const getActiveTab = (state: any) => {
+  // Navigate through: Drawer state -> MainTabs route -> MainStack state -> Tabs route -> BottomTabs state
   if (!state || !state.routes) return 'DashboardTab';
-  const route = state.routes[state.index];
-  const nestedState = route?.state;
-  if (nestedState?.routes && typeof nestedState.index === 'number') {
-    return nestedState.routes[nestedState.index]?.name;
+
+  const drawerRoute = state.routes[state.index ?? 0];
+  const mainStackState = drawerRoute?.state;
+
+  if (mainStackState?.routes) {
+    const mainStackRoute = mainStackState.routes[mainStackState.index ?? 0];
+    // If currently on Tabs screen (BottomTabs)
+    if (mainStackRoute?.name === 'Tabs' && mainStackRoute.state?.routes) {
+      const tabState = mainStackRoute.state;
+      return tabState.routes[tabState.index ?? 0]?.name || 'DashboardTab';
+    }
   }
+
   return 'DashboardTab';
 };
 
@@ -342,16 +402,42 @@ const AuthStack = () => (
 
 const AppEntry = () => <AppDrawer />;
 
+const SessionHandler = () => {
+  const dispatch = useDispatch();
+  const isSessionExpired = useSelector((state: any) => state.auth.isSessionExpired);
+
+  const handleClose = () => {
+    dispatch(AuthActions.setSessionExpired(false));
+    if (navigationRef.isReady()) {
+      navigationRef.reset({
+        index: 0,
+        routes: [{ name: 'Auth' }],
+      });
+    }
+  };
+
+  return (
+    <MessageModal
+      visible={isSessionExpired}
+      title="Session Expired"
+      message="Your session has expired. Please login again to continue."
+      type="error"
+      onClose={handleClose}
+    />
+  );
+};
+
 const App = () => {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <RootStack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
           <RootStack.Screen name="Splash" component={SplashScreen} />
           <RootStack.Screen name="Auth" component={AuthStack} />
           <RootStack.Screen name="App" component={AppEntry} />
         </RootStack.Navigator>
       </NavigationContainer>
+      <SessionHandler />
     </SafeAreaProvider>
   );
 };
@@ -450,4 +536,8 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.FONT_MEDIUM,
     fontSize: 14,
   },
+  logo: {
+    width: '75%',
+    height: 80,
+  }
 });
